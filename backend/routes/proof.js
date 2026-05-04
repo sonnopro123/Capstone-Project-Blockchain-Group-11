@@ -1,0 +1,91 @@
+/**
+ * POST /proof/generate  — generate Merkle proof for selective disclosure
+ * POST /proof/verify    — verify Merkle proof + ECC signature + revocation status
+ */
+
+const express = require('express');
+const router = express.Router();
+const { generateProof, verifyProof } = require('../merkle/merkleService');
+const { verifySignature } = require('../services/eccService');
+const { getCredential, getIssuer } = require('../storage/db');
+const blockchain = require('../blockchain/blockchainService');
+
+// POST /proof/generate
+router.post('/generate', async (req, res) => {
+  try {
+    const { credentialId, courseCode } = req.body;
+    if (!credentialId || !courseCode) {
+      return res.status(400).json({ error: 'credentialId and courseCode required' });
+    }
+
+    const cred = getCredential(credentialId);
+    if (!cred) return res.status(404).json({ error: 'Credential not found' });
+
+    const targetCourse = cred.courses.find((c) => c.courseCode === courseCode);
+    if (!targetCourse) {
+      return res.status(404).json({ error: `Course "${courseCode}" not in credential` });
+    }
+
+    const proofData = generateProof(cred.courses, targetCourse);
+
+    return res.json({ credentialId, ...proofData });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /proof/verify
+router.post('/verify', async (req, res) => {
+  try {
+    const { credentialId, proof, leaf, courseCode, grade } = req.body;
+    if (!credentialId || !proof || !leaf) {
+      return res.status(400).json({ error: 'credentialId, proof, leaf required' });
+    }
+
+    // 1. Check on-chain validity (not revoked, issuer authorized)
+    const onChain = await blockchain.verifyCredentialOnChain(credentialId);
+    if (!onChain.valid) {
+      return res.json({ valid: false, reason: 'Credential invalid or revoked on-chain' });
+    }
+
+    const merkleRoot = onChain.merkleRoot;
+
+    // 2. Verify Merkle proof against on-chain root
+    const merkleOk = verifyProof(proof, leaf, merkleRoot);
+    if (!merkleOk) {
+      return res.json({ valid: false, reason: 'Merkle proof invalid' });
+    }
+
+    // 3. Verify ECC signature using exact payload that was signed at issuance
+    const cred = getCredential(credentialId);
+    let eccSignatureValid = false;
+    if (cred) {
+      const issuer = getIssuer(cred.issuerAddress);
+      if (issuer) {
+        // Reconstruct payload with the exact issuedAt that was signed
+        const payload = {
+          issuerAddress: cred.issuerAddress,
+          studentId: cred.studentId,
+          studentName: cred.studentName,
+          courses: cred.courses,
+          issuedAt: cred.issuedAt,   // ← use stored issuedAt, not savedAt
+        };
+        eccSignatureValid = verifySignature(payload, cred.signature, issuer.publicKey);
+      }
+    }
+
+    return res.json({
+      valid: merkleOk && eccSignatureValid,
+      merkleProofValid: merkleOk,
+      eccSignatureValid,
+      courseCode,
+      grade,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;

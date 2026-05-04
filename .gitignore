@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Environment
+.env
+
+# Hardhat cache & artifacts
+cache/
+artifacts/
+
+# Storage data (runtime)
+backend/storage/data.json
+
+# Logs
+*.log
+server_out.txt
+server_err.txt
+vite_out.txt
+vite_err.txt
+
+# OS
+.DS_Store
+Thumbs.db
+.claude/
+
+# Build artifacts (Vercel builds from source)
+frontend/dist/
+
+# Internal AI assistant files
+claude.md
+tiendo.md

@@ -1,0 +1,27 @@
+{
+  "name": "decentralized-academic-credential",
+  "version": "1.0.0",
+  "description": "Decentralized Academic Credential System with Selective Disclosure",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "test:contract": "npx hardhat test",
+    "test:unit": "node test/eccMerkle.test.js",
+    "test:e2e": "node test/e2e.test.js",
+    "deploy:local": "npx hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia": "npx hardhat run scripts/deploy.js --network sepolia",
+    "node": "npx hardhat node"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "elliptic": "^6.6.1",
+    "ethers": "^6.13.1",
+    "express": "^4.19.2",
+    "js-sha3": "^0.9.3",
+    "merkletreejs": "^0.4.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.28.6"
+  }
+}

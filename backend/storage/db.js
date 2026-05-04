@@ -1,0 +1,84 @@
+/**
+ * Simple JSON-file local storage for credentials and issuers.
+ * Acts as an off-chain cache / source of truth for backend data.
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const DB_PATH = path.join(__dirname, 'data.json');
+
+function _load() {
+  if (!fs.existsSync(DB_PATH)) {
+    return { issuers: {}, credentials: {} };
+  }
+  return JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+}
+
+function _save(data) {
+  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+}
+
+// ---------------------------------------------------------------------------
+// Issuer operations
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} address
+ * @param {{ name: string, publicKey: string, ethAddress: string, ethPrivateKey: string }} info
+ */
+function saveIssuer(address, { name, publicKey, ethAddress, ethPrivateKey }) {
+  const db = _load();
+  db.issuers[address] = {
+    address,
+    name,
+    publicKey,
+    ethAddress,
+    ethPrivateKey,   // Hardhat test account key — used to sign on-chain txs as issuer
+    registeredAt: new Date().toISOString(),
+  };
+  _save(db);
+}
+
+function getIssuer(address) {
+  return _load().issuers[address] || null;
+}
+
+function getAllIssuers() {
+  return Object.values(_load().issuers);
+}
+
+// ---------------------------------------------------------------------------
+// Credential operations
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} credentialId
+ * @param {{ issuerAddress, studentId, studentName, courses, merkleRoot,
+ *            signature, payloadHash, issuedAt }} data
+ */
+function saveCredential(credentialId, data) {
+  const db = _load();
+  db.credentials[credentialId] = {
+    ...data,
+    credentialId,
+    revoked: false,
+    savedAt: new Date().toISOString(),
+  };
+  _save(db);
+}
+
+function getCredential(credentialId) {
+  return _load().credentials[credentialId] || null;
+}
+
+function markRevoked(credentialId) {
+  const db = _load();
+  if (db.credentials[credentialId]) {
+    db.credentials[credentialId].revoked = true;
+    db.credentials[credentialId].revokedAt = new Date().toISOString();
+    _save(db);
+  }
+}
+
+module.exports = { saveIssuer, getIssuer, getAllIssuers, saveCredential, getCredential, markRevoked };
