@@ -27,3 +27,8 @@ Thumbs.db
 # Build artifacts (Vercel builds from source)
 frontend/dist/
 
+# Internal AI assistant / local notes (never commit)
+claude.md
+CLAUDE.md
+*.local.md
+

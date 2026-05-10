@@ -1,6 +1,7 @@
-# Tiến độ dự án — Decentralized Academic Credential System
+# Tiến độ dự án — CredProof
+### Decentralized Academic Credential Verification
 
-Cập nhật lần cuối: 2026-04-12
+Cập nhật lần cuối: 2026-05-11
 
 ---
 
@@ -13,8 +14,12 @@ Cập nhật lần cuối: 2026-04-12
 | Merkle Engine | ✅ Hoàn thành | Unit test pass |
 | Backend API | ✅ Hoàn thành | Chạy port 3000 |
 | Blockchain Service | ✅ Hoàn thành | Kết nối Hardhat local |
-| End-to-End Test | ⚠️ Chưa chạy | Script sẵn sàng: test/e2e.test.js |
-| Frontend | ✅ Hoàn thành Sprint 1 | Chạy port 5173 |
+| End-to-End Test | ⚠️ Chưa chạy lại | Script sẵn sàng: test/e2e.test.js |
+| Frontend Sprint 1 | ✅ Hoàn thành | Landing + IssuerDashboard |
+| Frontend Sprint 2 | ✅ Hoàn thành | StudentDashboard + VerifierDashboard |
+| Frontend UX | ✅ Hoàn thành | Toast, Tooltip, WorkflowStepper, Context |
+| Branding | ✅ Hoàn thành | CredProof — Decentralized Academic Credential Verification |
+| Bug Fix: Re-issue | ✅ Hoàn thành | Credential revoked → cho phép issue lại |
 
 ---
 
@@ -27,11 +32,10 @@ Cập nhật lần cuối: 2026-04-12
 Đã implement:
 - `registerIssuer()` — onlyOwner
 - `removeIssuer()` — onlyOwner
-- `issueCredential()` — onlyAuthorizedIssuer, lưu merkleRoot on-chain
-- `revokeCredential()` — onlyAuthorizedIssuer (issuer gốc)
+- `issueCredential(credentialId, merkleRoot)` — onlyAuthorizedIssuer
+- `revokeCredential(credentialId)` — onlyAuthorizedIssuer (issuer gốc)
 - `verifyCredential()` — kiểm tra valid + not revoked + issuer authorized
 - `isIssuerAuthorized()`, `getMerkleRoot()`, `isRevoked()`
-- Events: IssuerRegistered, IssuerRemoved, CredentialIssued, CredentialRevoked
 
 Test: `test/CredentialRegistry.test.js` — 10+ case, all pass
 
@@ -41,7 +45,6 @@ Test: `test/CredentialRegistry.test.js` — 10+ case, all pass
 **File:** `backend/services/eccService.js`
 **Trạng thái:** ✅ Hoàn thành
 
-Đã implement:
 - `generateIssuerKeyPair()` — secp256k1
 - `signCredential(payload, privateKey)` — keccak256 hash + ECDSA sign
 - `verifySignature(payload, signature, publicKey)` — verify + tamper detection
@@ -54,11 +57,10 @@ Test: `test/eccMerkle.test.js` — all pass
 **File:** `backend/merkle/merkleService.js`
 **Trạng thái:** ✅ Hoàn thành
 
-Đã implement:
 - `buildMerkleTree(courses)` — sortPairs=true, keccak256 leaf hash
-- `generateRoot(courses)` — trả về hex root
-- `generateProof(courses, targetCourse)` — selective disclosure proof
-- `verifyProof(proof, leaf, root)` — xác minh proof
+- `generateRoot(courses)`
+- `generateProof(courses, targetCourse)` — selective disclosure
+- `verifyProof(proof, leaf, root)`
 
 Test: `test/eccMerkle.test.js` — all pass
 
@@ -68,17 +70,20 @@ Test: `test/eccMerkle.test.js` — all pass
 **File:** `backend/server.js` + `backend/routes/`
 **Trạng thái:** ✅ Chạy port 3000
 
-Endpoints đã hoạt động:
+| Endpoint | Trạng thái |
+|----------|-----------|
+| POST /issuer/register | ✅ Test pass |
+| POST /credential/issue | ✅ Test pass |
+| POST /credential/revoke | ✅ Test pass |
+| POST /proof/generate | ✅ |
+| POST /proof/verify | ✅ |
+| GET /credential/:id | ✅ |
+| GET /health | ✅ |
 
-| Endpoint | Trạng thái | Test |
-|----------|-----------|------|
-| POST /issuer/register | ✅ | Đã test thực tế — PASS |
-| POST /credential/issue | ✅ | Chưa test thực tế |
-| POST /credential/revoke | ✅ | Chưa test thực tế |
-| POST /proof/generate | ✅ | Chưa test thực tế |
-| POST /proof/verify | ✅ | Chưa test thực tế |
-| GET /credential/:id | ✅ | Chưa test thực tế |
-| GET /health | ✅ | PASS |
+**Fix quan trọng (2026-05-10):**
+- `credentialId = keccak256(studentId:issuerAddress:issuedAt)` — unique mỗi lần issue
+- Duplicate check chỉ block credential ACTIVE, bỏ qua revoked
+- Thêm `getActiveCredentialForStudent()` vào `backend/storage/db.js`
 
 ---
 
@@ -86,9 +91,8 @@ Endpoints đã hoạt động:
 **File:** `backend/blockchain/blockchainService.js`
 **Trạng thái:** ✅ Hoàn thành
 
-- ABI load từ artifact (đã fix)
-- Owner wallet dùng cho `registerIssuer` (onlyOwner)
-- Issuer wallet riêng dùng cho `issueCredential` / `revokeCredential`
+- Owner wallet → `registerIssuer` (onlyOwner)
+- Issuer wallet riêng → `issueCredential` / `revokeCredential`
 - `_contractAs(privateKey)` — dynamic signer per issuer
 
 ---
@@ -97,22 +101,31 @@ Endpoints đã hoạt động:
 **File:** `backend/storage/db.js` + `backend/storage/data.json`
 **Trạng thái:** ✅ Hoạt động
 
-Lưu: issuer (ECC keys + Ethereum keys), credential (issuedAt, courses, signature, merkleRoot)
+- Lưu: issuer (ECC keys + Ethereum keys), credential (issuedAt, courses, signature, merkleRoot, revoked, revokedAt)
+- `data.json` không commit lên Git
 
 ---
 
 ### FRONTEND
 **Thư mục:** `frontend/`
-**Trạng thái:** ✅ Sprint 1 hoàn thành — Chạy port 5173
+**Trạng thái:** ✅ Hoàn thành — Chạy port 5173
 
-| Trang | Trạng thái |
-|-------|-----------|
-| Landing Page | ✅ Hoàn thành |
-| Issuer Dashboard (3 tab) | ✅ Hoàn thành |
-| Student Dashboard (2 tab) | ✅ Hoàn thành |
-| Verifier Dashboard | ✅ Hoàn thành |
+| Trang / Component | Trạng thái |
+|-------------------|-----------|
+| Landing Page | ✅ CredProof branding + tagline |
+| Issuer Dashboard (3 tab) | ✅ Register → Issue → Revoke |
+| Student Dashboard | ✅ Xem credential + generate proof |
+| Verifier Dashboard | ✅ Verify proof |
+| Toast notifications | ✅ success / error / info |
+| WorkflowStepper | ✅ 3 bước có trạng thái |
+| Tooltip | ✅ Hover info |
+| IssuerContext | ✅ Share state giữa tabs |
+| CourseInput autocomplete | ✅ 26 môn học mẫu |
+| Kết quả phát hành | ✅ credentialId, merkleRoot, sig r/s, course list |
+| RevokeTab auto-fill | ✅ Lấy credentialId từ localStorage |
+| Branding constants | ✅ `frontend/src/config/branding.js` |
 
-Stack: React 18 + Vite 5 + TailwindCSS + Axios
+Stack: React 18 + Vite 5 + TailwindCSS + Axios + Framer Motion
 
 ---
 
@@ -121,7 +134,7 @@ Stack: React 18 + Vite 5 + TailwindCSS + Axios
 | Thành phần | Giá trị |
 |-----------|---------|
 | Mạng | Hardhat localhost 127.0.0.1:8545 |
-| Contract address | 0x5FbDB2315678afecb367f032d93F642f64180aa3 |
+| Contract address | 0x5FbDB2315678afecb367f032d93F642f64180aa3 (local, reset mỗi khi restart node) |
 | Owner wallet (Account #0) | 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 |
 | Issuer wallet (Account #1) | 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 |
 | Backend port | 3000 |
@@ -132,13 +145,12 @@ Stack: React 18 + Vite 5 + TailwindCSS + Axios
 ## VIỆC CÒN LẠI
 
 ### Ưu tiên cao
-- [ ] Chạy `node test/e2e.test.js` để verify toàn bộ flow
-- [ ] Test thực tế POST /credential/issue
-- [ ] Test thực tế POST /proof/generate + POST /proof/verify
+- [ ] Chạy lại `node test/e2e.test.js` để verify toàn bộ flow sau bug fix
+- [ ] Test thủ công demo flow 9 bước (xem readme.md)
 
 ### Ưu tiên trung bình
-- [ ] Test giao diện frontend kết nối backend thực tế
-- [ ] Kiểm tra proxy Vite → backend hoạt động đúng
+- [ ] Test StudentDashboard + VerifierDashboard kết nối backend thực tế
+- [ ] Kiểm tra proxy Vite → backend hoạt động đúng trên máy mới
 
 ### Ưu tiên thấp (demo cuối)
 - [ ] Deploy contract lên Sepolia testnet
@@ -154,4 +166,11 @@ Stack: React 18 + Vite 5 + TailwindCSS + Axios
 | 2026-04-12 | Fix ABI import, fix issuedAt mismatch, fix issuer wallet |
 | 2026-04-12 | Backend server start thành công, /issuer/register test PASS |
 | 2026-04-12 | Tạo toàn bộ frontend Sprint 1 (4 trang), Vite chạy port 5173 |
-| 2026-04-12 | Tạo readme.md (hướng dẫn cài đặt, chạy, API reference) + tiendo.md (file này) |
+| 2026-05-01 | Tạo readme.md, tiendo.md; test /credential/issue PASS |
+| 2026-05-10 | Thêm IssuerContext, Toast, Tooltip, WorkflowStepper |
+| 2026-05-10 | Refactor IssuerDashboard: auto-fill, inline validation, result card |
+| 2026-05-10 | Thêm CourseInput autocomplete (26 môn học mẫu) |
+| 2026-05-10 | Fix bug: credential re-issue sau revoke — credentialId formula + active check |
+| 2026-05-10 | Rebrand toàn bộ frontend: ChứngChỉ Chain → CredProof |
+| 2026-05-11 | Cập nhật readme.md (business logic rules, UX rules, security rules, demo flow 9 bước) |
+| 2026-05-11 | Remove claude.md khỏi git tracking; cập nhật .gitignore |
