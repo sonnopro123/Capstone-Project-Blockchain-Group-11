@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import MainLayout from '../layouts/MainLayout'
+import { APP_NAME, APP_TAGLINE, APP_ABBR } from '../config/branding'
 
 const features = [
   {
@@ -49,14 +50,16 @@ export default function Landing() {
           </div>
 
           {/* Headline */}
-          <h1 className="text-5xl md:text-6xl font-extrabold text-white leading-[1.1] tracking-tight mb-6">
-            Văn bằng số{' '}
+          <h1 className="text-5xl md:text-6xl font-extrabold text-white leading-[1.1] tracking-tight mb-3">
             <span className="bg-gradient-to-r from-[#6c47ff] to-[#3b82f6] bg-clip-text text-transparent">
-              phi tập trung
+              {APP_NAME}
             </span>
-            <br />
-            không thể làm giả
           </h1>
+
+          {/* Tagline */}
+          <p className="text-base md:text-lg font-medium text-[#6c7fff] tracking-wide mb-6">
+            {APP_TAGLINE}
+          </p>
 
           {/* Subtitle */}
           <p className="text-lg text-[#888] max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -179,8 +182,8 @@ export default function Landing() {
       <footer className="border-t border-[#1a1a1a] bg-[#0a0a0a]">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-[#6c47ff] flex items-center justify-center text-white text-xs font-bold">CC</div>
-            <span className="text-sm text-[#555]">ChứngChỉ Chain — IT4527E Capstone Project</span>
+            <div className="w-6 h-6 rounded bg-[#6c47ff] flex items-center justify-center text-white text-xs font-bold">{APP_ABBR}</div>
+            <span className="text-sm text-[#555]">{APP_NAME} — IT4527E Capstone Project</span>
           </div>
           <div className="flex items-center gap-6 text-xs text-[#444]">
             <span>Blockchain · ECC · Merkle Tree</span>

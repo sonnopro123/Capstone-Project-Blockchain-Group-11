@@ -81,4 +81,15 @@ function markRevoked(credentialId) {
   }
 }
 
-module.exports = { saveIssuer, getIssuer, getAllIssuers, saveCredential, getCredential, markRevoked };
+/**
+ * Returns the first non-revoked credential for this student+issuer pair, or null.
+ * Used to block re-issuing while an active credential exists.
+ */
+function getActiveCredentialForStudent(studentId, issuerAddress) {
+  const db = _load();
+  return Object.values(db.credentials).find(
+    (c) => c.studentId === studentId && c.issuerAddress === issuerAddress && !c.revoked
+  ) || null;
+}
+
+module.exports = { saveIssuer, getIssuer, getAllIssuers, saveCredential, getCredential, markRevoked, getActiveCredentialForStudent };

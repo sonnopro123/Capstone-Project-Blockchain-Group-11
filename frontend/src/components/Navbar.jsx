@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { APP_NAME, APP_ABBR } from '../config/branding'
 
 const links = [
   { to: '/', label: 'Trang chủ' },
@@ -18,9 +19,9 @@ export default function Navbar() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-[#6c47ff] flex items-center justify-center text-white text-xs font-bold">
-            CC
+            {APP_ABBR}
           </div>
-          <span className="text-sm font-semibold text-white">ChứngChỉ Chain</span>
+          <span className="text-sm font-semibold text-white">{APP_NAME}</span>
         </Link>
 
         {/* Links desktop */}

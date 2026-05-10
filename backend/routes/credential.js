@@ -9,7 +9,7 @@ const router = express.Router();
 const { ethers } = require('ethers');
 const { signCredential } = require('../services/eccService');
 const { generateRoot } = require('../merkle/merkleService');
-const { saveCredential, getCredential, markRevoked, getIssuer } = require('../storage/db');
+const { saveCredential, getCredential, markRevoked, getIssuer, getActiveCredentialForStudent } = require('../storage/db');
 const blockchain = require('../blockchain/blockchainService');
 
 // POST /credential/issue
@@ -30,6 +30,15 @@ router.post('/issue', async (req, res) => {
       return res.status(404).json({ error: 'Issuer not found. Register issuer first.' });
     }
 
+    // Block if student already has an active (non-revoked) credential from this issuer
+    const activeCredential = getActiveCredentialForStudent(studentId, issuerAddress);
+    if (activeCredential) {
+      return res.status(409).json({
+        error: 'Student already has an active credential from this issuer. Revoke the existing credential before issuing a new one.',
+        existingCredentialId: activeCredential.credentialId,
+      });
+    }
+
     // 1. Build payload — issuedAt fixed here and stored for later signature verification
     const issuedAt = new Date().toISOString();
     const payload = { issuerAddress, studentId, studentName, courses, issuedAt };
@@ -40,9 +49,11 @@ router.post('/issue', async (req, res) => {
     // 3. Build Merkle root from courses
     const merkleRoot = generateRoot(courses);
 
-    // 4. Derive credential ID = keccak256(studentId:issuerAddress)
+    // 4. Derive credential ID = keccak256(studentId:issuerAddress:issuedAt)
+    //    Including issuedAt ensures each issuance has a unique on-chain credentialId,
+    //    allowing re-issue after the previous credential has been revoked.
     const credentialId = ethers.keccak256(
-      ethers.toUtf8Bytes(`${studentId}:${issuerAddress}`)
+      ethers.toUtf8Bytes(`${studentId}:${issuerAddress}:${issuedAt}`)
     );
 
     // 5. Issue on-chain — signed by issuer's Ethereum wallet (onlyAuthorizedIssuer)
